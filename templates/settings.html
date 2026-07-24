@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Settings — GitHub Watchdog{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+
+<!-- Editable Environment Variables -->
+<div class="card">
+  <h2 class="card-title">Environment Variables</h2>
+  <p class="card-note">Changes are saved to <code>.env</code> and applied immediately. Restart the server to pick up scheduler changes.</p>
+
+  <div id="env-form">
+    <div id="env-rows">Loading...</div>
+    <div style="margin-top:16px; display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-save" onclick="saveEnv()">Save changes</button>
+      <span id="env-msg" class="form-success hidden"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule -->
+<div class="card">
+  <h2 class="card-title">Schedule</h2>
+  <div class="settings-row">
+    <span class="settings-label">Daily run time (UTC)</span>
+    <code class="settings-val">{{ schedule_time }}</code>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label">Next scheduled run</span>
+    <span class="settings-val">{{ next_run[:19] | replace('T', ' ') ~ ' UTC' if next_run else '—' }}</span>
+  </div>
+  <p class="card-note">Change <code>SCHEDULE_TIME</code> in the form above, then save and restart.</p>
+</div>
+
+<!-- Agent info -->
+<div class="card">
+  <h2 class="card-title">Agent</h2>
+  <div class="settings-row">
+    <span class="settings-label">Model</span>
+    <code class="settings-val">{{ model }}</code>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label">Soul file</span>
+    <code class="settings-val">memory/soul.md</code>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label">Behaviors file</span>
+    <code class="settings-val">memory/behaviors.md</code>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label">Memory state</span>
+    <code class="settings-val">memory/state.json</code>
+  </div>
+  <div class="settings-row">
+    <span class="settings-label">Report prompt</span>
+    <code class="settings-val">prompts/report.md</code>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SECRET_KEYS = new Set(['NVIDIA_API_KEY','GMAIL_APP_PASSWORD','TELEGRAM_BOT_TOKEN','SECRET_KEY']);
+let envData = [];
+
+async function loadEnv() {
+  const res = await fetch('/api/env');
+  envData = await res.json();
+  const container = document.getElementById('env-rows');
+  container.innerHTML = envData.map(e => `
+    <div class="env-row">
+      <label class="env-key" for="env_${e.key}">${e.key}</label>
+      <input
+        class="env-input"
+        id="env_${e.key}"
+        type="${SECRET_KEYS.has(e.key) ? 'password' : 'text'}"
+        value="${escHtml(e.value)}"
+        placeholder="${SECRET_KEYS.has(e.key) ? '(hidden — paste new value to change)' : ''}"
+        autocomplete="off"
+      />
+    </div>
+  `).join('');
+}
+
+async function saveEnv() {
+  const updates = {};
+  envData.forEach(e => {
+    const el = document.getElementById('env_' + e.key);
+    if (el) {
+      const v = el.value.trim();
+      if (v !== '' && v !== e.value) updates[e.key] = v;
+      else if (v !== '' && !SECRET_KEYS.has(e.key)) updates[e.key] = v;
+    }
+  });
+
+  if (!Object.keys(updates).length) {
+    showMsg('No changes to save.', false);
+    return;
+  }
+
+  const res = await fetch('/api/env', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(updates),
+  });
+  const d = await res.json();
+  if (res.ok) {
+    showMsg(`Saved: ${d.updated.join(', ')}`, true);
+    await loadEnv();
+  } else {
+    showMsg(d.error || 'Save failed.', false);
+  }
+}
+
+function showMsg(text, ok) {
+  const el = document.getElementById('env-msg');
+  el.textContent = text;
+  el.className = ok ? 'form-success' : 'form-error';
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+loadEnv();
+</script>
+{% endblock %}
