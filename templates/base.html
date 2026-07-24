@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}GitHub Watchdog{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">👁</span>
+      <span class="logo-text">Watchdog</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="/"         class="nav-link {% if request.path == '/' %}active{% endif %}">
+        <span class="nav-icon">⬛</span> Dashboard
+      </a></li>
+      <li><a href="/reports"  class="nav-link {% if '/reports' in request.path %}active{% endif %}">
+        <span class="nav-icon">📋</span> Reports
+      </a></li>
+      <li><a href="/students" class="nav-link {% if request.path == '/students' %}active{% endif %}">
+        <span class="nav-icon">👥</span> Students
+      </a></li>
+      <li><a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span> Settings
+      </a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <span class="agent-tag">agent v1.0</span>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page-header">
+      <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
+      <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
