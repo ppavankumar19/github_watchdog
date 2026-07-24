@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Students — GitHub Watchdog{% endblock %}
+{% block page_title %}Students{% endblock %}
+
+{% block content %}
+
+<!-- CSV upload -->
+<div class="card">
+  <h2 class="card-title">Upload CSV</h2>
+  <p class="card-note">CSV must have <code>name</code> and <code>repo_url</code> columns. This replaces the current list.</p>
+  <div class="add-form">
+    <input class="input" type="file" id="csv-file" accept=".csv" />
+    <button class="btn btn-primary" onclick="uploadCSV()">Upload</button>
+  </div>
+  <div id="upload-msg" class="form-error hidden"></div>
+  <div class="card-note" style="margin-top:10px">
+    You can also send the CSV file directly to <strong>@github_19_bot</strong> on Telegram.
+  </div>
+</div>
+
+<!-- Add student form -->
+<div class="card">
+  <h2 class="card-title">Add Student</h2>
+  <form id="add-form" class="add-form" onsubmit="addStudent(event)">
+    <input class="input" id="new-name"     type="text"  placeholder="Full name"          required />
+    <input class="input" id="new-repo-url" type="url"   placeholder="https://github.com/…" required />
+    <button class="btn btn-primary" type="submit">Add</button>
+  </form>
+  <div id="add-error" class="form-error hidden"></div>
+</div>
+
+<!-- Students table -->
+<div class="card">
+  <h2 class="card-title">All Students <span class="count-badge">{{ students | length }}</span></h2>
+  {% if students %}
+  <table class="table" id="students-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>GitHub Repo</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in students %}
+      <tr data-name="{{ s.name }}">
+        <td class="td-name">{{ s.name }}</td>
+        <td class="td-repo">
+          <a href="{{ s.repo_url }}" target="_blank" rel="noopener" class="link-muted">
+            {{ s.repo_url | replace('https://github.com/', '') }}
+          </a>
+        </td>
+        <td class="td-action">
+          <button class="btn btn-danger-sm" onclick="deleteStudent('{{ s.name }}')">Remove</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">No students yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function uploadCSV() {
+  const fileInput = document.getElementById('csv-file');
+  const msg = document.getElementById('upload-msg');
+  msg.classList.add('hidden');
+
+  if (!fileInput.files.length) {
+    msg.textContent = 'Please select a CSV file first.';
+    msg.classList.remove('hidden');
+    return;
+  }
+
+  const form = new FormData();
+  form.append('file', fileInput.files[0]);
+
+  const res = await fetch('/api/students/upload', { method: 'POST', body: form });
+  const d = await res.json();
+
+  if (res.ok) {
+    location.reload();
+  } else {
+    msg.textContent = d.error || 'Upload failed.';
+    msg.classList.remove('hidden');
+  }
+}
+
+async function addStudent(e) {
+  e.preventDefault();
+  const name    = document.getElementById('new-name').value.trim();
+  const repoUrl = document.getElementById('new-repo-url').value.trim();
+  const errEl   = document.getElementById('add-error');
+  errEl.classList.add('hidden');
+
+  const res = await fetch('/api/students', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name, repo_url: repoUrl }),
+  });
+  if (res.ok) {
+    location.reload();
+  } else {
+    const d = await res.json();
+    errEl.textContent = d.error || 'Unknown error';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function deleteStudent(name) {
+  if (!confirm(`Remove "${name}"?`)) return;
+  const res = await fetch('/api/students', {
+    method: 'DELETE',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name }),
+  });
+  if (res.ok) {
+    document.querySelector(`tr[data-name="${CSS.escape(name)}"]`)?.remove();
+  }
+}
+</script>
+{% endblock %}
