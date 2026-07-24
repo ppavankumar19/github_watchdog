@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — GitHub Watchdog{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_actions %}
+  <button id="run-btn" class="btn btn-primary" onclick="startRun()" {% if is_running %}disabled{% endif %}>
+    {% if is_running %}Running…{% else %}▶ Run Now{% endif %}
+  </button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Status bar -->
+<div class="stat-row">
+  <div class="stat-card">
+    <div class="stat-label">Last Run</div>
+    <div class="stat-value" id="last-run">
+      {{ last_run | replace('T',' ') | replace('Z',' UTC') if last_run else 'Never' }}
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Next Run</div>
+    <div class="stat-value" id="next-run">
+      {{ next_run[:19] | replace('T', ' ') ~ ' UTC' if next_run else '—' }}
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Students</div>
+    <div class="stat-value">{{ students | length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Today</div>
+    <div class="stat-value text-green">
+      {{ students | selectattr('status', 'equalto', 'green') | list | length }}
+    </div>
+  </div>
+</div>
+
+<!-- Live run terminal -->
+<div id="run-box" class="run-box hidden">
+  <div class="run-box-header">
+    <span>Agent Output</span>
+    <span id="run-status-badge" class="badge badge-running">Running</span>
+  </div>
+  <pre id="run-log" class="terminal"></pre>
+  <div id="run-done-bar" class="run-done-bar hidden">
+    Report saved — <a id="run-report-link" href="/reports">view reports</a>
+  </div>
+</div>
+
+<!-- Student grid -->
+<section class="section">
+  <h2 class="section-title">Student Status</h2>
+  {% if students %}
+  <div class="student-grid">
+    {% for s in students %}
+    <div class="student-card status-{{ s.status }}">
+      <div class="student-card-header">
+        <span class="student-name">{{ s.name }}</span>
+        <span class="status-dot status-{{ s.status }}" title="{{ s.status }}"></span>
+      </div>
+      <div class="student-meta">
+        <div class="meta-row">
+          <span class="meta-key">Repo</span>
+          <a class="meta-val link-muted" href="{{ s.repo_url }}" target="_blank" rel="noopener">
+            {{ s.repo_url | replace('https://github.com/', '') }}
+          </a>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">Last commit</span>
+          <span class="meta-val">{{ s.last_date }}</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-key">Message</span>
+          <span class="meta-val text-muted">{{ s.last_message[:60] }}{% if s.last_message|length > 60 %}…{% endif %}</span>
+        </div>
+        {% if s.streak > 1 %}
+        <div class="streak-badge">🔥 {{ s.streak }}-day streak</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state-box">
+    <p>No students configured yet.</p>
+    <p style="font-size:13px;margin-bottom:20px;">Add students via the Students page, upload a CSV, or send a CSV file to <strong>@github_19_bot</strong> on Telegram.</p>
+    <a href="/students" class="btn btn-primary">Add Students →</a>
+  </div>
+  {% endif %}
+</section>
+
+<!-- Recent reports -->
+{% if recent_reports %}
+<section class="section">
+  <h2 class="section-title">Recent Reports</h2>
+  <div class="report-list">
+    {% for r in recent_reports %}
+    <a href="/reports/{{ r.id }}" class="report-row">
+      <span class="report-ts">{{ r.timestamp[:19] | replace('T', ' ') }} UTC</span>
+      <span class="report-summary">{{ r.ok_count }}/{{ r.student_count }} active</span>
+      <span class="report-arrow">→</span>
+    </a>
+    {% endfor %}
+    <a href="/reports" class="report-row report-row-more">View all reports →</a>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function startRun() {
+  const btn = document.getElementById('run-btn');
+  const box = document.getElementById('run-box');
+  const log = document.getElementById('run-log');
+  const badge = document.getElementById('run-status-badge');
+  const doneBar = document.getElementById('run-done-bar');
+  const reportLink = document.getElementById('run-report-link');
+
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  box.classList.remove('hidden');
+  doneBar.classList.add('hidden');
+  log.textContent = '';
+  badge.textContent = 'Running';
+  badge.className = 'badge badge-running';
+
+  const es = new EventSource('/api/run/stream');
+
+  es.onmessage = (e) => {
+    log.textContent += e.data + '\n';
+    log.scrollTop = log.scrollHeight;
+  };
+
+  es.addEventListener('report_id', (e) => {
+    reportLink.href = '/reports/' + e.data;
+    doneBar.classList.remove('hidden');
+  });
+
+  es.addEventListener('done', (e) => {
+    es.close();
+    btn.disabled = false;
+    btn.textContent = '▶ Run Now';
+    badge.textContent = 'Done';
+    badge.className = 'badge badge-done';
+    if (e.data === 'busy') {
+      badge.textContent = 'Busy';
+      badge.className = 'badge badge-warn';
+    }
+  });
+
+  es.onerror = () => {
+    es.close();
+    btn.disabled = false;
+    btn.textContent = '▶ Run Now';
+    badge.textContent = 'Error';
+    badge.className = 'badge badge-error';
+    log.textContent += '\n[Connection closed]';
+  };
+}
+</script>
+{% endblock %}
