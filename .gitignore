@@ -2,3 +2,7 @@
 __pycache__/
 *.py[cod]
 venv/
+reports/
+state.json
+memory.md
+*.log
