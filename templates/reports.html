@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — GitHub Watchdog{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+
+{% if reports %}
+<div class="report-list report-list-full">
+  {% for r in reports %}
+  <a href="/reports/{{ r.id }}" class="report-row">
+    <div class="report-row-left">
+      <span class="report-ts">{{ r.timestamp[:19] | replace('T', ' ') }} UTC</span>
+      <span class="report-id text-muted">#{{ r.id }}</span>
+    </div>
+    <div class="report-row-right">
+      <span class="pill pill-{% if r.ok_count == r.student_count %}green{% elif r.ok_count == 0 %}red{% else %}yellow{% endif %}">
+        {{ r.ok_count }}/{{ r.student_count }} active
+      </span>
+      <span class="report-arrow">→</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state-box">
+  <p>No reports yet.</p>
+  <a href="/" class="btn btn-primary">Run the agent now →</a>
+</div>
+{% endif %}
+
+{% endblock %}

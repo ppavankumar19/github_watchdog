@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Report {{ report.id }} — GitHub Watchdog{% endblock %}
+{% block page_title %}Report{% endblock %}
+
+{% block page_actions %}
+  <a href="/reports" class="btn btn-ghost">← Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="report-meta-bar">
+  <span>{{ report.timestamp[:19] | replace('T', ' ') }} UTC</span>
+  <span class="pill pill-{% if report.ok_count == report.student_count %}green{% elif report.ok_count == 0 %}red{% else %}yellow{% endif %}">
+    {{ report.ok_count }}/{{ report.student_count }} active
+  </span>
+</div>
+<pre class="report-body">{{ report.text }}</pre>
+{% endblock %}
