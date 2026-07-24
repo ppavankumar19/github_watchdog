@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: github-watchdog
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SCHEDULE_TIME
+        value: "08:00"
+      - key: DATA_DIR
+        value: /data
+      # Set these in the Render dashboard (Environment tab) — do NOT commit them:
+      # NVIDIA_API_KEY, NVIDIA_MODEL, GITHUB_TOKEN,
+      # GMAIL_ADDRESS, GMAIL_APP_PASSWORD, REPORT_RECIPIENT_EMAIL,
+      # TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, SECRET_KEY
+    disk:
+      name: watchdog-data
+      mountPath: /data
+      sizeGB: 1
