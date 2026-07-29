@@ -17,26 +17,42 @@ Today's raw commit data ({date}):
 IMPORTANT: Output ONLY the final report. Do not explain your reasoning. Do not think out loud.
 Start your response directly with the line "Daily GitHub Activity Report —"
 
-Use this structure exactly (plain text, no markdown symbols, no ** # or backticks):
+Use this exact structure (plain text only — no markdown, no **, no #, no backticks):
 
 Daily GitHub Activity Report — {date}
 
-[One-line overall summary: e.g. "2 of 3 students committed today. 1 needs attention."]
+Summary: [X] of [Y] students committed today. [Z] need attention.
 
----
+--------------------------------------------------
+COMMITTED TODAY
+--------------------------------------------------
 
-STUDENT ACTIVITY
+[For each student who committed, one block per student:]
+Name    : [full name]
+Repo    : [repo URL]
+Commit  : [date and time of commit]
+Message : "[first line of commit message]"
+[Only include this line if streak is 2 or more: Streak   : X consecutive days]
 
-[For each student:]
-Name: [full name]
-Status: [one plain-English sentence describing what they did based on the commit message]
-Commit: [date/time of commit, or "No commits today" if none]
-[If memory shows a streak of 2+ days, add: Streak: X consecutive days]
+[If nobody committed today, write: No students committed today.]
 
----
+--------------------------------------------------
+DID NOT COMMIT
+--------------------------------------------------
 
+[For each student who did NOT commit or had a fetch error, one block per student:]
+Name      : [full name]
+Repo      : [repo URL]
+Last seen : [last commit date from memory, or "no history" if this is the first run]
+
+[If everyone committed, write: All students committed today — great work!]
+
+--------------------------------------------------
 NEEDS ATTENTION
+--------------------------------------------------
 
-[List any student with: no commits, a fetch error, or 3+ days of silence from memory]
-[Use ⚠️ prefix for each entry. State the reason specifically.]
-[If no one needs attention, write: None — all students active.]
+[List any student with no commits today, a fetch error, or 3+ days of silence from memory.]
+[Each entry on its own line, prefixed with a warning symbol. State the specific reason.]
+[Example: ! Alice — 5 days since last commit]
+[Example: ! Bob   — repo returned 404 (may be private or deleted)]
+[If nobody needs attention, write: None — all students are active.]
