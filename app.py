@@ -237,10 +237,11 @@ def api_students_upload():
     if not f or not f.filename.endswith(".csv"):
         return jsonify({"error": "Please upload a .csv file"}), 400
 
+    raw = f.read()
     try:
-        content = f.read().decode("utf-8-sig")
+        content = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
-        content = f.read().decode("latin-1")
+        content = raw.decode("latin-1")
 
     import io as _io
     reader = csv.DictReader(_io.StringIO(content))
