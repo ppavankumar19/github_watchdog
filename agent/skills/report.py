@@ -7,6 +7,7 @@ Prompt template lives in prompts/report.md — edit there to change style, no Py
 """
 
 import os
+import time
 from datetime import date
 from pathlib import Path
 
@@ -30,38 +31,72 @@ class ReportSkill:
             raw_data=raw_data,
             date=date.today().isoformat(),
         )
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
-            temperature=0.6,
-            top_p=0.95,
-        )
-        raw = resp.choices[0].message.content or ""
-        # Strip any reasoning preamble — report always starts with "Daily GitHub"
-        marker = "Daily GitHub Activity Report"
-        idx = raw.find(marker)
-        return raw[idx:].strip() if idx != -1 else raw.strip()
+        last_exc = None
+        for attempt in range(2):
+            try:
+                resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=1500,
+                    temperature=0.6,
+                    top_p=0.95,
+                )
+                raw = resp.choices[0].message.content or ""
+                # Strip any reasoning preamble — report always starts with "Daily GitHub"
+                marker = "Daily GitHub Activity Report"
+                idx = raw.find(marker)
+                return raw[idx:].strip() if idx != -1 else raw.strip()
+            except Exception as exc:
+                last_exc = exc
+                if attempt == 0:
+                    print(f"[report] LLM call failed (attempt 1): {exc} — retrying in 5s...")
+                    time.sleep(5)
+        raise RuntimeError(f"Report generation failed after 2 attempts: {last_exc}")
 
     def _format_raw(self, results: list[dict]) -> str:
-        lines = []
+        committed = []
+        not_committed = []
+
         for entry in results:
             name = entry["name"]
             repo = entry["repo_url"]
 
             if entry.get("error"):
-                lines.append(f"- {name} ({repo}): ERROR — {entry['error']}")
+                not_committed.append(
+                    f"  {name}\n"
+                    f"    repo    : {repo}\n"
+                    f"    status  : ERROR — {entry['error']}"
+                )
                 continue
 
             commit = entry.get("commit") or {}
             if not commit.get("has_commits"):
-                lines.append(f"- {name} ({repo}): No commits found in repo.")
+                not_committed.append(
+                    f"  {name}\n"
+                    f"    repo    : {repo}\n"
+                    f"    status  : No commits found in repo"
+                )
                 continue
 
             first_line = (commit.get("message") or "").splitlines()[0]
-            lines.append(
-                f"- {name} ({repo}): commit {commit['sha']} "
-                f"by {commit['author_name']} on {commit['date']} "
-                f'— "{first_line}" ({commit["url"]})'
+            committed.append(
+                f"  {name}\n"
+                f"    repo    : {repo}\n"
+                f"    sha     : {commit['sha'][:8]}\n"
+                f"    date    : {commit['date']}\n"
+                f"    author  : {commit['author_name']}\n"
+                f"    message : {first_line}\n"
+                f"    url     : {commit['url']}"
             )
+
+        lines = [
+            f"Total students  : {len(results)}",
+            f"Committed today : {len(committed)}",
+            f"Did not commit  : {len(not_committed)}",
+            "",
+            "--- COMMITTED ---",
+        ]
+        lines.extend(committed if committed else ["  (none)"])
+        lines += ["", "--- DID NOT COMMIT / ERROR ---"]
+        lines.extend(not_committed if not_committed else ["  (none — everyone committed!)"])
         return "\n".join(lines)
