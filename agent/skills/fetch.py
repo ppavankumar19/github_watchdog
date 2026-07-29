@@ -36,10 +36,13 @@ class FetchSkill:
 
     def _read_csv(self, csv_path: str) -> list[dict]:
         students = []
-        with open(csv_path, newline="", encoding="utf-8") as f:
-            for row in csv.DictReader(f):
-                name = row.get("name", "").strip()
-                repo_url = row.get("repo_url", "").strip()
-                if name and repo_url:
-                    students.append({"name": name, "repo_url": repo_url})
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    name = row.get("name", "").strip()
+                    repo_url = row.get("repo_url", "").strip()
+                    if name and repo_url:
+                        students.append({"name": name, "repo_url": repo_url})
+        except FileNotFoundError:
+            pass
         return students
