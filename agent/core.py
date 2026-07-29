@@ -91,7 +91,7 @@ class GitHubWatchdogAgent:
         github_token = os.getenv("GITHUB_TOKEN")
 
         # 1. FETCH
-        log("[1/5] Fetching student commits ...")
+        log("[1/6] Fetching student commits ...")
         results = self.fetch_skill.run(csv_path, github_token)
         if not results:
             msg = "No students configured. Add students via Telegram (/students) or the web UI."
@@ -101,15 +101,15 @@ class GitHubWatchdogAgent:
         log(f"      {ok}/{len(results)} students have commits.")
 
         # 2. CONTEXT
-        log("[2/5] Loading memory context ...")
+        log("[2/6] Loading memory context ...")
         memory_context = self.memory.get_context()
 
         # 3. REPORT
-        log("[3/5] Generating report ...")
+        log("[3/6] Generating report ...")
         report = self.report_skill.run(results, self.soul, memory_context)
 
         # 4. REFLECT
-        log("[4/5] Reflecting on report quality ...")
+        log("[4/6] Reflecting on report quality ...")
         verdict = self.reflect_skill.run(report, self.soul)
         log(f"      Verdict: {verdict}")
 
@@ -118,11 +118,17 @@ class GitHubWatchdogAgent:
             report = f"[Agent QA flag: {verdict}]\n\n{report}"
 
         # 5. NOTIFY
-        log("[5/5] Sending notifications ...")
-        self.notify_skill.run(report)
-        log("      Email + Telegram sent.")
+        log("[5/6] Sending notifications ...")
+        delivery = self.notify_skill.run(report, student_count=len(results), ok_count=ok)
+        channels = []
+        if delivery["email"]:
+            channels.append("email")
+        if delivery["telegram"]:
+            channels.append("Telegram")
+        log(f"      Sent via: {', '.join(channels) if channels else 'none — all deliveries failed'}")
 
         # 6. REMEMBER
+        log("[6/6] Updating memory ...")
         self.memory.update(results)
         log("      Memory updated.")
 
